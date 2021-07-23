@@ -21,8 +21,15 @@ Sippreep.Initializer().then(() => {
         ],
         //当前模型索引
         modelUrlIndex: -1,
+
+        //对象分组属性
+        groupAttr:"类别",
+        groupIndex:-1,
+
         //定位聚焦对象集合
         focusedDbids: [],
+        focusedDbidIndex:-1,
+
         //颜色集合
         colors: [new THREE.Vector4(1, 0, 0, 1)//红
             , new THREE.Vector4(0, 1, 0, 1)//绿
@@ -30,12 +37,11 @@ Sippreep.Initializer().then(() => {
         ],
         //当前颜色索引
         colorIndex: -1,
+
         //视角集合
         viewStates: [],
         //当前视角索引
         viewStateIndex: -1,
-        //分组依据
-        groupAttr:"类别"
     }
     //应用功能
     let funcs = {
@@ -90,28 +96,28 @@ Sippreep.Initializer().then(() => {
             /**
              * 按类别分组对象
              */
-            let values = await filter.listPropertyValueWithObjectId(funsData.groupAttr);
+            let groupMap = await filter.listPropertyValueWithObjectId(funsData.groupAttr);
             /**
-             * 随机获取一个分组
+             * 获取下一个分组
              */
-            let randomValue = helperFuncs.getRandomValue([...values.keys()]);
-            let dbids = values.get(randomValue);
-
-            funsData.focusedDbids = dbids;
+            let groups = [...groupMap.keys()];
+            funsData.groupIndex = helperFuncs.getNextIndex(funsData.groupIndex, groups);
+            funsData.focusedDbids = groupMap.get(groups[funsData.groupIndex]);
             //隔离对象
             viewer.isolate(funsData.focusedDbids);
             //聚焦视角
-            viewer.fitToView(dbids);
+            viewer.fitToView(funsData.focusedDbids);
             //选中对象
-            //viewer.select(dbids);
+            //viewer.select(funsData.focusedDbids);
         },
         "定位聚焦对象": () => {
             if (funsData.focusedDbids.length == 0) {
                 alert("请先定位聚焦对象组");
                 return;
             }
-            //随机获取一个对象
-            let dbids = [helperFuncs.getRandomValue(funsData.focusedDbids)];
+            //获取下一个对象
+            funsData.focusedDbidIndex = helperFuncs.getNextIndex(funsData.focusedDbidIndex, funsData.focusedDbids);
+            let dbids = [funsData.focusedDbids[funsData.focusedDbidIndex]];
             
             //聚焦视角
             viewer.fitToView(dbids);
@@ -142,7 +148,7 @@ Sippreep.Initializer().then(() => {
                 viewer.setThemingColor(dbid, funsData.colors[funsData.colorIndex]);
             });
 
-            viewer.fitToView(funsData.focusedDbids);
+            //viewer.fitToView(funsData.focusedDbids);
         },
         "对象颜色清除": () => {
             //清除颜色
