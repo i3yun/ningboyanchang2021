@@ -177,7 +177,7 @@ Sippreep.Initializer().then(() => {
         },
         "显示对象标记": async () => {
             if (funsData.focusedDbids.length == 0) {
-                alert("请先定位聚焦对象");
+                alert("请先定位聚焦对象组");
                 return;
             }
             /**
@@ -243,13 +243,10 @@ Sippreep.Initializer().then(() => {
             return array[Math.round(array.length * Math.random())];
         },
         getTemp: (dbid) => {
-            return `<img style="width: 32px;height: 32px;" src="https://viewer.aisanwei.cn/logo4.svg"></img>`;
-
-        //     return `<div style="background-color:rgba(255, 255, 255, 0.8);">
-        //     <img style="width: 32px;height: 32px;" src="https://viewer.aisanwei.cn/logo4.svg"></img>
-        //     <br />
-        //     编号：${dbid}
-        //   </div>`;
+            return `<div style="background-color:rgba(255, 255, 255, 0.8);">
+            <img style="width: 32px;height: 32px;"  onclick="alert(${dbid})" src="https://viewer.aisanwei.cn/logo4.svg"></img>
+            编号：${dbid}
+          </div>`;
         }
     }
     helperFuncs.showGUI();
