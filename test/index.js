@@ -24,7 +24,8 @@ Sippreep.Initializer().then(() => {
         modelUrlIndex: -1,
 
         //对象分组属性
-        groupAttr: "类别",
+        //groupAttr: "类别",
+        groupAttr: "族与类型/构件分类编码",
         groupIndex: -1,
 
         //定位聚焦对象集合
@@ -181,8 +182,8 @@ Sippreep.Initializer().then(() => {
                 alert("请先定位聚焦对象组");
                 return;
             }
+             //计算对象空间位置
             let boxMap = funsData.focusedDbids.map(dbid => {
-                //计算对象空间位置
                 const fa = new Float32Array(6);
                 viewer.model.getInstanceTree().getNodeBox(dbid, fa);
                 return {
@@ -221,8 +222,8 @@ Sippreep.Initializer().then(() => {
                 alert("请先定位聚焦对象组");
                 return;
             }
+            //计算对象空间位置
             let boxs = funsData.focusedDbids.map(dbid => {
-                //计算并设置标记显示空间位置
                 let fa = new Float32Array(6);
                 viewer.model.getInstanceTree().getNodeBox(dbid, fa);
                 return new THREE.Box3(new THREE.Vector3(fa[0], fa[1], fa[2]), new THREE.Vector3(fa[3], fa[4], fa[5]));
@@ -259,8 +260,8 @@ Sippreep.Initializer().then(() => {
                 alert("请先定位聚焦对象组");
                 return;
             }
+            //计算对象空间位置
             let boxs = funsData.focusedDbids.map(dbid => {
-                //计算并设置标记显示空间位置
                 let fa = new Float32Array(6);
                 viewer.model.getInstanceTree().getNodeBox(dbid, fa);
                 return new THREE.Box3(new THREE.Vector3(fa[0], fa[1], fa[2]), new THREE.Vector3(fa[3], fa[4], fa[5]));
@@ -280,16 +281,16 @@ Sippreep.Initializer().then(() => {
 
             //计算并设置标记显示空间位置
             let a = new Sippreep.Extensions.Markup.Polygon();
-            let box = boxs[0];
-            boxs.forEach((b) => {
+            let box = new THREE.Box3();
+            boxs.forEach(b => {
                 box.union(b);
             });
-
             a.vertices = boxs.map((b) => {
                 let c = b.center();
                 c.z = box.max.z;
                 return c;
             });
+            //a.vertices.unshift(box.center());
             item.anchor = a;
 
             //设置标记内容及偏移
