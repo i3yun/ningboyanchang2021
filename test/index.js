@@ -1,4 +1,5 @@
 ///<reference types="@i3yun/viewer" />
+
 //初始化资源
 Sippreep.Initializer().then(() => {
     let viewer_element = document.getElementById('viewer-element');
@@ -175,11 +176,21 @@ Sippreep.Initializer().then(() => {
             // if (funsData.viewStateIndex == funsData.viewStates.length-1)
             //     alert("已到集合结尾");
         },
-        "显示对象标记": async () => {
+        "显示信息标记": async () => {
             if (funsData.focusedDbids.length == 0) {
                 alert("请先定位聚焦对象组");
                 return;
             }
+            let boxMap = funsData.focusedDbids.map(dbid => {
+                //计算对象空间位置
+                const fa = new Float32Array(6);
+                viewer.model.getInstanceTree().getNodeBox(dbid, fa);
+                return {
+                    dbid: dbid,
+                    box: new THREE.Box3(new THREE.Vector3(fa[0], fa[1], fa[2]), new THREE.Vector3(fa[3], fa[4], fa[5])),
+                }
+            });
+
             /**
              * 加载扩展(标记管理器)
              * @type Sippreep.Extensions.Markup.Markup3DExtension
@@ -187,27 +198,106 @@ Sippreep.Initializer().then(() => {
             let markup3dApi = await viewer.loadExtension('Sippreep.Extensions.Markup.Markup3DExtension');
             markup3dApi.beginUpdate();
             markup3dApi.getItems().clear();
-            funsData.focusedDbids.forEach(dbid => {
+            boxMap.forEach(b => {
+                let { dbid, box } = b;
                 //创建标记
                 let item = markup3dApi.getItems().add();
                 //设置标记依附对象
                 item.anchorDbid = dbid;
 
                 //计算并设置标记显示空间位置
-                let fa = new Float32Array(6);
-                viewer.model.getInstanceTree().getNodeBox(dbid, fa);
-                let box = new THREE.Box3(new THREE.Vector3(fa[0], fa[1], fa[2]), new THREE.Vector3(fa[3], fa[4], fa[5]));
                 let a = new Sippreep.Extensions.Markup.Point();
                 a.value = box.center().add(new THREE.Vector3(0, 0, box.size().z / 2));
                 item.anchor = a;
 
                 //设置标记内容及偏移
-                item.content = helperFuncs.getTemp(dbid);
+                item.content = helperFuncs.getTemp("信息",dbid);
                 item.contentOffset = new THREE.Vector2(-16, -16);
             });
             markup3dApi.endUpdate();
         },
-        "清除对象标记": async () => {
+        "显示路径标记": async () => {
+            if (funsData.focusedDbids.length == 0) {
+                alert("请先定位聚焦对象组");
+                return;
+            }
+            let boxs = funsData.focusedDbids.map(dbid => {
+                //计算并设置标记显示空间位置
+                let fa = new Float32Array(6);
+                viewer.model.getInstanceTree().getNodeBox(dbid, fa);
+                return new THREE.Box3(new THREE.Vector3(fa[0], fa[1], fa[2]), new THREE.Vector3(fa[3], fa[4], fa[5]));
+            });
+
+            /**
+             * 加载扩展(标记管理器)
+             * @type Sippreep.Extensions.Markup.Markup3DExtension
+             */
+            let markup3dApi = await viewer.loadExtension('Sippreep.Extensions.Markup.Markup3DExtension');
+            markup3dApi.beginUpdate();
+            markup3dApi.getItems().clear();
+            //创建标记
+            let item = markup3dApi.getItems().add();
+            //设置标记依附对象
+            item.anchorDbid = funsData.focusedDbids[0];
+
+            //计算并设置标记显示空间位置
+            let a = new Sippreep.Extensions.Markup.Polyline();
+            a.path = boxs.map((b) => {
+                let c = b.center();
+                c.z = b.max.z;
+                return c;
+            });
+            item.anchor = a;
+
+            //设置标记内容及偏移
+            item.content = helperFuncs.getTemp("路径",item.anchorDbid);
+            item.contentOffset = new THREE.Vector2(-16, -16);
+            markup3dApi.endUpdate();
+        },
+        "显示空间标记": async () => {
+            if (funsData.focusedDbids.length == 0) {
+                alert("请先定位聚焦对象组");
+                return;
+            }
+            let boxs = funsData.focusedDbids.map(dbid => {
+                //计算并设置标记显示空间位置
+                let fa = new Float32Array(6);
+                viewer.model.getInstanceTree().getNodeBox(dbid, fa);
+                return new THREE.Box3(new THREE.Vector3(fa[0], fa[1], fa[2]), new THREE.Vector3(fa[3], fa[4], fa[5]));
+            });
+
+            /**
+             * 加载扩展(标记管理器)
+             * @type Sippreep.Extensions.Markup.Markup3DExtension
+             */
+            let markup3dApi = await viewer.loadExtension('Sippreep.Extensions.Markup.Markup3DExtension');
+            markup3dApi.beginUpdate();
+            markup3dApi.getItems().clear();
+            //创建标记
+            let item = markup3dApi.getItems().add();
+            //设置标记依附对象
+            item.anchorDbid = funsData.focusedDbids[0];
+
+            //计算并设置标记显示空间位置
+            let a = new Sippreep.Extensions.Markup.Polygon();
+            let box = boxs[0];
+            boxs.forEach((b) => {
+                box.union(b);
+            });
+
+            a.vertices = boxs.map((b) => {
+                let c = b.center();
+                c.z = box.max.z;
+                return c;
+            });
+            item.anchor = a;
+
+            //设置标记内容及偏移
+            item.content = helperFuncs.getTemp("空间",item.anchorDbid);
+            item.contentOffset = new THREE.Vector2(-16, -16);
+            markup3dApi.endUpdate();
+        },
+        "清除所有标记": async () => {
             /**
              * 加载扩展(模型筛选器)
              * @type Sippreep.Extensions.Markup.Markup3DExtension
@@ -242,10 +332,10 @@ Sippreep.Initializer().then(() => {
         getRandomValue: (array) => {
             return array[Math.round(array.length * Math.random())];
         },
-        getTemp: (dbid) => {
+        getTemp: (name, value) => {
             return `<div style="background-color:rgba(255, 255, 255, 0.8);border: 1px solid black;">
-            <img style="width: 32px;height: 32px;"  onclick="alert(${dbid})" src="https://viewer.aisanwei.cn/logo4.svg"></img>
-            编号：${dbid}
+            <img style="width: 32px;height: 32px;"  onclick="alert(${value})" src="https://viewer.aisanwei.cn/logo4.svg"></img>
+            ${name}：${value}
           </div>`;
         }
     }
