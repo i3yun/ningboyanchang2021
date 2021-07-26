@@ -243,7 +243,7 @@ Sippreep.Initializer().then(() => {
             return array[Math.round(array.length * Math.random())];
         },
         getTemp: (dbid) => {
-            return `<div style="background-color:rgba(255, 255, 255, 0.8);">
+            return `<div style="background-color:rgba(255, 255, 255, 0.8);border: 1px solid black;">
             <img style="width: 32px;height: 32px;"  onclick="alert(${dbid})" src="https://viewer.aisanwei.cn/logo4.svg"></img>
             编号：${dbid}
           </div>`;
