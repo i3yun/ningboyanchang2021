@@ -23,12 +23,12 @@ Sippreep.Initializer().then(() => {
         modelUrlIndex: -1,
 
         //对象分组属性
-        groupAttr:"类别",
-        groupIndex:-1,
+        groupAttr: "类别",
+        groupIndex: -1,
 
         //定位聚焦对象集合
         focusedDbids: [],
-        focusedDbidIndex:-1,
+        focusedDbidIndex: -1,
 
         //颜色集合
         colors: [new THREE.Vector4(1, 0, 0, 1)//红
@@ -97,6 +97,7 @@ Sippreep.Initializer().then(() => {
              * 按类别分组对象
              */
             let groupMap = await filter.listPropertyValueWithObjectId(funsData.groupAttr);
+            groupMap.delete(Sippreep.Extensions.ModelFilter.ModelFilterNoPropertyValue);
             /**
              * 获取下一个分组
              */
@@ -118,7 +119,7 @@ Sippreep.Initializer().then(() => {
             //获取下一个对象
             funsData.focusedDbidIndex = helperFuncs.getNextIndex(funsData.focusedDbidIndex, funsData.focusedDbids);
             let dbids = [funsData.focusedDbids[funsData.focusedDbidIndex]];
-            
+
             //聚焦视角
             viewer.fitToView(dbids);
             //选中对象
@@ -173,7 +174,47 @@ Sippreep.Initializer().then(() => {
 
             // if (funsData.viewStateIndex == funsData.viewStates.length-1)
             //     alert("已到集合结尾");
-        }
+        },
+        "显示对象标记": async () => {
+            if (funsData.focusedDbids.length == 0) {
+                alert("请先定位聚焦对象");
+                return;
+            }
+            /**
+             * 加载扩展(标记管理器)
+             * @type Sippreep.Extensions.Markup.Markup3DExtension
+             */
+            let markup3dApi = await viewer.loadExtension('Sippreep.Extensions.Markup.Markup3DExtension');
+            markup3dApi.beginUpdate();
+            markup3dApi.getItems().clear();
+            funsData.focusedDbids.forEach(dbid => {
+                //创建标记
+                let item = markup3dApi.getItems().add();
+                //设置标记依附对象
+                item.anchorDbid = dbid;
+
+                //计算并设置标记显示空间位置
+                let fa = new Float32Array(6);
+                viewer.model.getInstanceTree().getNodeBox(dbid, fa);
+                let box = new THREE.Box3(new THREE.Vector3(fa[0], fa[1], fa[2]), new THREE.Vector3(fa[3], fa[4], fa[5]));
+                let a = new Sippreep.Extensions.Markup.Point();
+                a.value = box.center().add(new THREE.Vector3(0, 0, box.size().z / 2));
+                item.anchor = a;
+
+                //设置标记内容及偏移
+                item.content = helperFuncs.getTemp(dbid);
+                item.contentOffset = new THREE.Vector2(-16, -16);
+            });
+            markup3dApi.endUpdate();
+        },
+        "清除对象标记": async () => {
+            /**
+             * 加载扩展(模型筛选器)
+             * @type Sippreep.Extensions.Markup.Markup3DExtension
+             */
+            let markup3dApi = await viewer.loadExtension('Sippreep.Extensions.Markup.Markup3DExtension');
+            markup3dApi.getItems().clear();
+        },
     }
     //辅助工具
     let helperFuncs = {
@@ -181,14 +222,14 @@ Sippreep.Initializer().then(() => {
             //GUI显示
             var allGui = new dat.GUI({
                 closeOnTop: true,
-                width:320
+                width: 320
             });
             allGui.domElement.parentNode.style.zIndex = '1';
             for (let name in funcs) {
                 allGui.add(funcs, name);
             }
         },
-        getNextIndex:(index, array) => {
+        getNextIndex: (index, array) => {
             let i = index;
             i++;
             if (i >= array.length) {
@@ -200,6 +241,15 @@ Sippreep.Initializer().then(() => {
         },
         getRandomValue: (array) => {
             return array[Math.round(array.length * Math.random())];
+        },
+        getTemp: (dbid) => {
+            return `<img style="width: 32px;height: 32px;" src="https://viewer.aisanwei.cn/logo4.svg"></img>`;
+
+        //     return `<div style="background-color:rgba(255, 255, 255, 0.8);">
+        //     <img style="width: 32px;height: 32px;" src="https://viewer.aisanwei.cn/logo4.svg"></img>
+        //     <br />
+        //     编号：${dbid}
+        //   </div>`;
         }
     }
     helperFuncs.showGUI();
