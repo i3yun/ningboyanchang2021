@@ -17,16 +17,21 @@ Sippreep.Initializer().then(() => {
      * 应用数据
      */
     let funsData = {
-        modelUrls: ['https://www.aisanwei.cn/api/Storge/Viewable?ID=jobs/525b8525-df81-4a65-9a97-f0197ac9c7c3/output/main.hf'//模型1
-            , 'https://www.aisanwei.cn/api/Storge/Viewable?ID=jobs/dc6803f8-6871-4adf-98b6-4a508f5aa6ba/output/main.hf'//模型2
+        modelUrls: [
+            '8443620a-1286-4a6c-b708-f502c3803f28'
+            , '525b8525-df81-4a65-9a97-f0197ac9c7c3'//模型1
+            , 'dc6803f8-6871-4adf-98b6-4a508f5aa6ba'//模型2
+            , '86dcbcc4-ec91-4482-a27a-0c8eb66381e1'
         ],
         //当前模型索引
         modelUrlIndex: -1,
 
         //对象分组属性
-        //groupAttr: "类别",
-        groupAttr: "族与类型/构件分类编码",
+        groupAttr: "类别",
+        //groupAttr: "族与类型/构件分类编码",
+        //groupAttr: "族",
         groupIndex: -1,
+        groups: '类别,工作集,空间类型名称,空间类型编码,空间位置编码,分类编码,分类名称,系统编码,系统编码名称'.split(','),
 
         //定位聚焦对象集合
         focusedDbids: [],
@@ -39,6 +44,7 @@ Sippreep.Initializer().then(() => {
         ],
         //当前颜色索引
         colorIndex: -1,
+        markColorIndex: -1,
 
         //视角集合
         viewStates: [],
@@ -54,7 +60,8 @@ Sippreep.Initializer().then(() => {
             if (viewer.model)
                 viewer.unloadModel(viewer.model);
             //加载新模型
-            viewer.loadModel(funsData.modelUrls[funsData.modelUrlIndex], { globalOffset: { x: 0, y: 0, z: 0 } }, (m) => {
+            let url = `https://www.aisanwei.cn/api/Storge/Viewable?ID=jobs/${funsData.modelUrls[funsData.modelUrlIndex]}/output/main.hf`;
+            viewer.loadModel(url, { globalOffset: { x: 0, y: 0, z: 0 } }, (m) => {
                 alert("加载模型成功(左键旋转，中键平移，中键滚动缩放)");
             }, (e) => {
                 alert("加载模型失败");
@@ -114,13 +121,15 @@ Sippreep.Initializer().then(() => {
             //viewer.select(funsData.focusedDbids);
         },
         "定位聚焦对象": () => {
-            if (funsData.focusedDbids.length == 0) {
+            let focusedDbids = viewer.getIsolatedNodes();
+            //let focusedDbids = funsData.focusedDbids;
+            if (focusedDbids.length == 0) {
                 alert("请先定位聚焦对象组");
                 return;
             }
             //获取下一个对象
-            funsData.focusedDbidIndex = helperFuncs.getNextIndex(funsData.focusedDbidIndex, funsData.focusedDbids);
-            let dbids = [funsData.focusedDbids[funsData.focusedDbidIndex]];
+            funsData.focusedDbidIndex = helperFuncs.getNextIndex(funsData.focusedDbidIndex, focusedDbids);
+            let dbids = [focusedDbids[funsData.focusedDbidIndex]];
 
             //聚焦视角
             viewer.fitToView(dbids);
@@ -137,7 +146,8 @@ Sippreep.Initializer().then(() => {
             //viewer.select([]);
         },
         "对象颜色设置": () => {
-            if (funsData.focusedDbids.length == 0) {
+            let focusedDbids = viewer.getIsolatedNodes();
+            if (focusedDbids.length == 0) {
                 alert("请先定位聚焦对象");
                 return;
             }
@@ -147,11 +157,11 @@ Sippreep.Initializer().then(() => {
             }
 
             funsData.colorIndex = helperFuncs.getNextIndex(funsData.colorIndex, funsData.colors);
-            funsData.focusedDbids.forEach(dbid => {
+            focusedDbids.forEach(dbid => {
                 viewer.setThemingColor(dbid, funsData.colors[funsData.colorIndex]);
             });
 
-            //viewer.fitToView(funsData.focusedDbids);
+            //viewer.fitToView(focusedDbids);
         },
         "对象颜色清除": () => {
             //清除颜色
@@ -178,12 +188,13 @@ Sippreep.Initializer().then(() => {
             //     alert("已到集合结尾");
         },
         "显示信息标记": async () => {
-            if (funsData.focusedDbids.length == 0) {
+            let focusedDbids = viewer.getIsolatedNodes();
+            if (focusedDbids.length == 0) {
                 alert("请先定位聚焦对象组");
                 return;
             }
-             //计算对象空间位置
-            let boxMap = funsData.focusedDbids.map(dbid => {
+            //计算对象空间位置
+            let boxMap = focusedDbids.map(dbid => {
                 const fa = new Float32Array(6);
                 viewer.model.getInstanceTree().getNodeBox(dbid, fa);
                 return {
@@ -199,34 +210,37 @@ Sippreep.Initializer().then(() => {
             let markup3dApi = await viewer.loadExtension('Sippreep.Extensions.Markup.Markup3DExtension');
             markup3dApi.beginUpdate();
             markup3dApi.getItems().clear();
-            boxMap.forEach(b => {
-                let { dbid, box } = b;
+            boxMap.forEach(({ dbid, box }) => {
                 //创建标记
                 let item = markup3dApi.getItems().add();
                 //设置标记依附对象
                 item.anchorDbid = dbid;
 
-                //计算并设置标记显示空间位置
+                //计算并设置标记显示信息位置
                 let a = new Sippreep.Extensions.Markup.Point();
                 a.value = box.center().add(new THREE.Vector3(0, 0, box.size().z / 2));
                 item.anchor = a;
 
                 //设置标记内容及偏移
-                item.content = helperFuncs.getTemp("信息",dbid);
+                item.content = helperFuncs.getTemp("信息", dbid);
                 item.contentOffset = new THREE.Vector2(-16, -16);
             });
             markup3dApi.endUpdate();
         },
         "显示路径标记": async () => {
-            if (funsData.focusedDbids.length == 0) {
+            let focusedDbids = viewer.getIsolatedNodes();
+            if (focusedDbids.length == 0) {
                 alert("请先定位聚焦对象组");
                 return;
             }
             //计算对象空间位置
-            let boxs = funsData.focusedDbids.map(dbid => {
-                let fa = new Float32Array(6);
+            let boxMap = focusedDbids.map(dbid => {
+                const fa = new Float32Array(6);
                 viewer.model.getInstanceTree().getNodeBox(dbid, fa);
-                return new THREE.Box3(new THREE.Vector3(fa[0], fa[1], fa[2]), new THREE.Vector3(fa[3], fa[4], fa[5]));
+                return {
+                    dbid: dbid,
+                    box: new THREE.Box3(new THREE.Vector3(fa[0], fa[1], fa[2]), new THREE.Vector3(fa[3], fa[4], fa[5])),
+                }
             });
 
             /**
@@ -239,34 +253,41 @@ Sippreep.Initializer().then(() => {
             //创建标记
             let item = markup3dApi.getItems().add();
             //设置标记依附对象
-            item.anchorDbid = funsData.focusedDbids[0];
+            item.anchorDbid = focusedDbids[0];
 
-            //计算并设置标记显示空间位置
+            //计算并设置标记显示路径
             let a = new Sippreep.Extensions.Markup.Polyline();
-            a.path = boxs.map((b) => {
-                let c = b.center();
-                c.z = b.max.z;
+            a.path = boxMap.map(({ box }) => {
+                let c = box.center();
+                c.z = box.max.z;
                 return c;
             });
             item.anchor = a;
-
+            //设置颜色
+            funsData.markColorIndex = helperFuncs.getNextIndex(funsData.markColorIndex, funsData.colors);
+            let color = funsData.colors[funsData.markColorIndex];
+            item.appearance = { anchorColor: new THREE.Color(color.x, color.y, color.z) }
             //设置标记内容及偏移
-            item.content = helperFuncs.getTemp("路径",item.anchorDbid);
+            item.content = helperFuncs.getTemp("路径", item.anchorDbid);
             item.contentOffset = new THREE.Vector2(-16, -16);
             markup3dApi.endUpdate();
         },
         "显示空间标记": async () => {
-            if (funsData.focusedDbids.length == 0) {
+            let focusedDbids = viewer.getIsolatedNodes();
+            if (focusedDbids.length == 0) {
                 alert("请先定位聚焦对象组");
                 return;
             }
             //计算对象空间位置
-            let boxs = funsData.focusedDbids.map(dbid => {
-                let fa = new Float32Array(6);
+            let boxMap = focusedDbids.map(dbid => {
+                const fa = new Float32Array(6);
                 viewer.model.getInstanceTree().getNodeBox(dbid, fa);
-                return new THREE.Box3(new THREE.Vector3(fa[0], fa[1], fa[2]), new THREE.Vector3(fa[3], fa[4], fa[5]));
+                return {
+                    dbid: dbid,
+                    box: new THREE.Box3(new THREE.Vector3(fa[0], fa[1], fa[2]), new THREE.Vector3(fa[3], fa[4], fa[5])),
+                }
             });
-
+             
             /**
              * 加载扩展(标记管理器)
              * @type Sippreep.Extensions.Markup.Markup3DExtension
@@ -277,26 +298,31 @@ Sippreep.Initializer().then(() => {
             //创建标记
             let item = markup3dApi.getItems().add();
             //设置标记依附对象
-            item.anchorDbid = funsData.focusedDbids[0];
+            item.anchorDbid = focusedDbids[0];
 
-            //计算并设置标记显示空间位置
+            //计算并设置标记显示空间
             let a = new Sippreep.Extensions.Markup.Polygon();
-            let box = new THREE.Box3();
-            boxs.forEach(b => {
-                box.union(b);
+            let unionBox = new THREE.Box3();
+            boxMap.forEach(({ box }) => {
+                unionBox.union(box);
             });
-            a.vertices = boxs.map((b) => {
-                let c = b.center();
-                c.z = box.max.z;
+            a.vertices = boxMap.map(({ box }) => {
+                let c = box.center();
+                c.z = unionBox.max.z;
                 return c;
             });
-            //a.vertices.unshift(box.center());
             item.anchor = a;
 
+            //设置颜色
+            funsData.markColorIndex = helperFuncs.getNextIndex(funsData.markColorIndex, funsData.colors);
+            let color = funsData.colors[funsData.markColorIndex];
+            item.appearance = { anchorColor: new THREE.Color(color.x, color.y, color.z) }
+
             //设置标记内容及偏移
-            item.content = helperFuncs.getTemp("空间",item.anchorDbid);
+            item.content = helperFuncs.getTemp("空间", item.anchorDbid);
             item.contentOffset = new THREE.Vector2(-16, -16);
             markup3dApi.endUpdate();
+            viewer.fitToView(markup3dApi.getBox(item));
         },
         "清除所有标记": async () => {
             /**
@@ -306,18 +332,88 @@ Sippreep.Initializer().then(() => {
             let markup3dApi = await viewer.loadExtension('Sippreep.Extensions.Markup.Markup3DExtension');
             markup3dApi.getItems().clear();
         },
-    }
+        "显示分组种类列表": async () => {
+            if (!viewer.model) {
+                alert("请先切换场景");
+                return;
+            }
+            /**
+            * 加载扩展(模型筛选器)
+            * @type Sippreep.Extensions.ModelFilter.ModelFilterExtension
+            */
+            let filter = await viewer.loadExtension("Sippreep.Extensions.ModelFilter.ModelFilterExtension");
+            /**
+             * 按类别分组对象
+             */
+            let groupMap = await filter.listProperties(funsData.groups);
+            let gui2 = helperFuncs.allGui.addFolder(`分组种类列表(${groupMap.length})`);
+            gui2.open();
+            var dataList = {};
+            for (let v of groupMap) {
+                if (!v.hidden) {
+                    dataList[v.attributeName] = ((_) => {
+                        return () => {
+                            funsData.groupAttr = _;
+                            funcs["显示所有对象组(图层)"]();
+                        };
+                    })(v.attributeName);
+                    gui2.add(dataList, v.attributeName);
+                }
+            }
+
+            if (helperFuncs.gui2)
+                helperFuncs.allGui.removeFolder(helperFuncs.gui2);
+            helperFuncs.gui2 = gui2;
+        },
+        "显示所有对象组(图层)": async () => {
+            if (!viewer.model) {
+                alert("请先切换场景");
+                return;
+            }
+            /**
+            * 加载扩展(模型筛选器)
+            * @type Sippreep.Extensions.ModelFilter.ModelFilterExtension
+            */
+            let filter = await viewer.loadExtension("Sippreep.Extensions.ModelFilter.ModelFilterExtension");
+            /**
+             * 按类别分组对象
+             */
+            let groupMap = await filter.listPropertyValueWithObjectId(funsData.groupAttr);
+            groupMap.delete(Sippreep.Extensions.ModelFilter.ModelFilterNoPropertyValue);
+
+            let gui3 = helperFuncs.allGui.addFolder(`对象组(图层)列表 ${funsData.groupAttr}(${groupMap.size})`);
+            gui3.open();
+            var dataList = {};
+            for (let [key, value] of groupMap) {
+                let name = `${key}`;
+                dataList[name] = false;
+                gui3.add(dataList, name).onChange(_ => {
+                    let array = [];
+                    for (let name in dataList) {
+                        if (dataList[name]) {
+                            array.push(...(groupMap.get(name)));
+                        }
+                    }
+                    viewer.isolate(array);
+                    viewer.fitToView(array);
+                });
+            }
+
+            if (helperFuncs.gui3)
+                helperFuncs.allGui.removeFolder(helperFuncs.gui3);
+            helperFuncs.gui3 = gui3;
+        },
+    };
     //辅助工具
     let helperFuncs = {
+        allGui: new dat.GUI({
+            closeOnTop: true,
+            width: 320
+        }),
         showGUI: () => {
-            //GUI显示
-            var allGui = new dat.GUI({
-                closeOnTop: true,
-                width: 320
-            });
-            allGui.domElement.parentNode.style.zIndex = '1';
+            helperFuncs.allGui.domElement.parentNode.style.zIndex = '1';
             for (let name in funcs) {
-                allGui.add(funcs, name);
+                helperFuncs.allGui.add(funcs, name);
             }
         },
         getNextIndex: (index, array) => {
