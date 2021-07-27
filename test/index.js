@@ -259,8 +259,16 @@ Sippreep.Initializer().then(() => {
             let a = new Sippreep.Extensions.Markup.Polyline();
             a.path = boxMap.map(({ box }) => {
                 let c = box.center();
-                c.z = box.max.z;
+                c.z = box.max.z + 0.01;
                 return c;
+            }).sort((a, b) => {
+                if (a.x != b.x)
+                    return a.x - b.x;
+                if (a.z != b.z)
+                    return a.z - b.z;
+                if (a.y != b.y)
+                    return a.y - b.y;
+                return 0;
             });
             item.anchor = a;
             //设置颜色
@@ -268,8 +276,8 @@ Sippreep.Initializer().then(() => {
             let color = funsData.colors[funsData.markColorIndex];
             item.appearance = { anchorColor: new THREE.Color(color.x, color.y, color.z) }
             //设置标记内容及偏移
-            item.content = helperFuncs.getTemp("路径", item.anchorDbid);
-            item.contentOffset = new THREE.Vector2(-16, -16);
+            // item.content = helperFuncs.getTemp("路径", item.anchorDbid);
+            // item.contentOffset = new THREE.Vector2(-16, -16);
             markup3dApi.endUpdate();
         },
         "显示空间标记": async () => {
@@ -287,7 +295,7 @@ Sippreep.Initializer().then(() => {
                     box: new THREE.Box3(new THREE.Vector3(fa[0], fa[1], fa[2]), new THREE.Vector3(fa[3], fa[4], fa[5])),
                 }
             });
-             
+
             /**
              * 加载扩展(标记管理器)
              * @type Sippreep.Extensions.Markup.Markup3DExtension
@@ -295,34 +303,32 @@ Sippreep.Initializer().then(() => {
             let markup3dApi = await viewer.loadExtension('Sippreep.Extensions.Markup.Markup3DExtension');
             markup3dApi.beginUpdate();
             markup3dApi.getItems().clear();
-            //创建标记
-            let item = markup3dApi.getItems().add();
-            //设置标记依附对象
-            item.anchorDbid = focusedDbids[0];
+            boxMap.forEach(({ dbid, box }) => {
+                //创建标记
+                let item = markup3dApi.getItems().add();
+                //设置标记依附对象
+                item.anchorDbid = dbid;
 
-            //计算并设置标记显示空间
-            let a = new Sippreep.Extensions.Markup.Polygon();
-            let unionBox = new THREE.Box3();
-            boxMap.forEach(({ box }) => {
-                unionBox.union(box);
+                //计算并设置标记显示空间
+                let a = new Sippreep.Extensions.Markup.Polygon();
+                a.vertices = [
+                    new THREE.Vector3(box.max.x, box.max.y, box.max.z + 0.01),
+                    new THREE.Vector3(box.max.x, box.min.y, box.max.z + 0.01),
+                    new THREE.Vector3(box.min.x, box.min.y, box.max.z + 0.01),
+                    new THREE.Vector3(box.min.x, box.max.y, box.max.z + 0.01),
+                ]
+                item.anchor = a;
+
+                //设置标记内容及偏移
+                //item.content = helperFuncs.getTemp("空间", dbid);
+                //item.contentOffset = new THREE.Vector2(-16, -16);
+
+                //设置颜色
+                funsData.markColorIndex = helperFuncs.getNextIndex(funsData.markColorIndex, funsData.colors);
+                let color = funsData.colors[funsData.markColorIndex];
+                item.appearance = { anchorColor: new THREE.Color(color.x, color.y, color.z) }
             });
-            a.vertices = boxMap.map(({ box }) => {
-                let c = box.center();
-                c.z = unionBox.max.z;
-                return c;
-            });
-            item.anchor = a;
-
-            //设置颜色
-            funsData.markColorIndex = helperFuncs.getNextIndex(funsData.markColorIndex, funsData.colors);
-            let color = funsData.colors[funsData.markColorIndex];
-            item.appearance = { anchorColor: new THREE.Color(color.x, color.y, color.z) }
-
-            //设置标记内容及偏移
-            item.content = helperFuncs.getTemp("空间", item.anchorDbid);
-            item.contentOffset = new THREE.Vector2(-16, -16);
             markup3dApi.endUpdate();
-            viewer.fitToView(markup3dApi.getBox(item));
         },
         "清除所有标记": async () => {
             /**
